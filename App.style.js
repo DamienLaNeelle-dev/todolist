@@ -15,9 +15,7 @@ const s = StyleSheet.create({
   body: {
     flex: 5,
   },
-  footer: {
-    height: 70,
-  },
+  footer: {},
 });
 
 export { s };

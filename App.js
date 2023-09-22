@@ -1,22 +1,69 @@
-import { ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { s } from "./App.style";
 import HeaderLogo from "./components/HeaderLogo/HeaderLogo";
 import Cards from "./components/Cards/Cards";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import FooterMenu from "./components/FooterMenu/FooterMenu";
+import AddButton from "./components/AddButton/AddButton";
+import Dialog from "react-native-dialog";
+import uuid from "react-native-uuid";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+let isFirstRender = true;
+let isLoadUpdate = false;
 
 export default function App() {
-  const [todoList, setTodoList] = useState([
-    { id: 1, title: "Sortir le chien", isCompleted: true },
-    { id: 2, title: "Aller chez le garagiste", isCompleted: false },
-    { id: 3, title: "Appeler le vétérinaire", isCompleted: true },
-    { id: 4, title: "Faire les courses", isCompleted: true },
-    { id: 5, title: "Sortir le chien", isCompleted: true },
-    { id: 6, title: "Aller chez le garagiste", isCompleted: false },
-    { id: 7, title: "Appeler le vétérinaire", isCompleted: true },
-    { id: 8, title: "Faire les courses", isCompleted: true },
-  ]);
+  const [selectedFooterMenu, setSelectedFooterMenu] = useState("all");
+  const [todoList, setTodoList] = useState([]);
+  const [isAddDialogVisibile, setIsAddDialogVisibile] = useState();
+  const [inputValue, setInputValue] = useState("");
 
+  useEffect(() => {
+    loadTodoList();
+  }, []);
+
+  useEffect(() => {
+    if (isLoadUpdate) {
+      isLoadUpdate = false;
+    } else {
+      if (!isFirstRender) {
+        saveTodoList();
+      } else {
+        isFirstRender = false;
+      }
+    }
+  }, [todoList]);
+
+  async function saveTodoList() {
+    try {
+      await AsyncStorage.setItem("@todoList", JSON.stringify(todoList));
+    } catch (error) {
+      alert("Erreur " + error);
+    }
+  }
+  async function loadTodoList() {
+    try {
+      const stringifiedTodoList = await AsyncStorage.getItem("@todoList");
+      if (stringifiedTodoList != null) {
+        const parsedTodoList = JSON.parse(stringifiedTodoList);
+        isLoadUpdate = true;
+        setTodoList(parsedTodoList);
+      }
+    } catch (error) {
+      alert("Erreur " + error);
+    }
+  }
+  function getFiltredList() {
+    switch (selectedFooterMenu) {
+      case "all":
+        return todoList;
+      case "inProgress":
+        return todoList.filter((todo) => !todo.isCompleted);
+      case "done":
+        return todoList.filter((todo) => todo.isCompleted);
+    }
+  }
   function updateTodo(todo) {
     const updatedTodo = {
       ...todo,
@@ -29,15 +76,45 @@ export default function App() {
     const updatedTodoList = [...todoList];
     updatedTodoList[indexToUpdate] = updatedTodo;
     setTodoList(updatedTodoList);
-    console.log(todo);
+  }
+
+  function deleteTodo(todoToDelete) {
+    Alert.alert("Suppression", "Supprimer cette tâche?", [
+      {
+        text: "Supprimer",
+        style: "destructive",
+        onPress: () => {
+          setTodoList(todoList.filter((todo) => todo.id != todoToDelete.id));
+        },
+      },
+      {
+        text: "Annuler",
+        style: "cancel",
+      },
+    ]);
   }
 
   function renderTodoList() {
-    return todoList.map((todo) => (
+    return getFiltredList().map((todo) => (
       <View style={s.cardItem} key={todo.id}>
-        <Cards onPress={updateTodo} todo={todo} />
+        <Cards onLongPress={deleteTodo} onPress={updateTodo} todo={todo} />
       </View>
     ));
+  }
+
+  function showAddDialog() {
+    setIsAddDialogVisibile(true);
+  }
+
+  function addTodo() {
+    const newTodo = {
+      id: uuid.v4(),
+      title: inputValue,
+      isCompleted: false,
+    };
+
+    setTodoList([...todoList, newTodo]);
+    setIsAddDialogVisibile(false);
   }
   return (
     <>
@@ -49,11 +126,31 @@ export default function App() {
           <View style={s.body}>
             <ScrollView>{renderTodoList()}</ScrollView>
           </View>
+          <AddButton onPress={showAddDialog} />
         </SafeAreaView>
       </SafeAreaProvider>
       <View style={s.footer}>
-        <Text>footer</Text>
+        <FooterMenu
+          todoList={todoList}
+          onPress={setSelectedFooterMenu}
+          selectedFooterMenu={selectedFooterMenu}
+        />
       </View>
+      <Dialog.Container
+        visible={isAddDialogVisibile}
+        onBackdropPress={() => setIsAddDialogVisibile(false)}
+      >
+        <Dialog.Title>Créer une tâche</Dialog.Title>
+        <Dialog.Description>
+          Choisi un nom pour la nouvelle tâche
+        </Dialog.Description>
+        <Dialog.Input onChangeText={setInputValue} />
+        <Dialog.Button
+          disabled={inputValue.trim().length === 0}
+          label="Créer"
+          onPress={addTodo}
+        />
+      </Dialog.Container>
     </>
   );
 }
