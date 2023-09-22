@@ -1,20 +1,59 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { s } from "./App.style";
+import HeaderLogo from "./components/HeaderLogo/HeaderLogo";
+import Cards from "./components/Cards/Cards";
+import { useState } from "react";
 
 export default function App() {
+  const [todoList, setTodoList] = useState([
+    { id: 1, title: "Sortir le chien", isCompleted: true },
+    { id: 2, title: "Aller chez le garagiste", isCompleted: false },
+    { id: 3, title: "Appeler le vétérinaire", isCompleted: true },
+    { id: 4, title: "Faire les courses", isCompleted: true },
+    { id: 5, title: "Sortir le chien", isCompleted: true },
+    { id: 6, title: "Aller chez le garagiste", isCompleted: false },
+    { id: 7, title: "Appeler le vétérinaire", isCompleted: true },
+    { id: 8, title: "Faire les courses", isCompleted: true },
+  ]);
+
+  function updateTodo(todo) {
+    const updatedTodo = {
+      ...todo,
+      isCompleted: !todo.isCompleted,
+    };
+    const indexToUpdate = todoList.findIndex(
+      (todo) => todo.id === updatedTodo.id
+    );
+
+    const updatedTodoList = [...todoList];
+    updatedTodoList[indexToUpdate] = updatedTodo;
+    setTodoList(updatedTodoList);
+    console.log(todo);
+  }
+
+  function renderTodoList() {
+    return todoList.map((todo) => (
+      <View style={s.cardItem} key={todo.id}>
+        <Cards onPress={updateTodo} todo={todo} />
+      </View>
+    ));
+  }
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <>
+      <SafeAreaProvider>
+        <SafeAreaView style={s.app}>
+          <View style={s.header}>
+            <HeaderLogo />
+          </View>
+          <View style={s.body}>
+            <ScrollView>{renderTodoList()}</ScrollView>
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
+      <View style={s.footer}>
+        <Text>footer</Text>
+      </View>
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
